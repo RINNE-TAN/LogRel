@@ -1,0 +1,14 @@
+name = "LogRel"
+version = "0.1.0"
+defaultTargets = ["logrel"]
+
+[[lean_lib]]
+name = "LogRel"
+
+[[lean_exe]]
+name = "logrel"
+root = "Main"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
