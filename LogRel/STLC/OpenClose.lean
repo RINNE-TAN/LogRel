@@ -1,6 +1,6 @@
 
 
-import LogRel.Basic
+import LogRel.STLC.Basic
 @[simp]
 def opening (i : ℕ) (v : Expr) : Expr → Expr
   | .bvar j => if j = i then v else .bvar j

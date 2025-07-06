@@ -1,9 +1,9 @@
 
 
-import LogRel.Basic
-import LogRel.OpenClose
+import LogRel.STLC.Basic
+import LogRel.STLC.OpenClose
 inductive value : Expr → Prop where
-  | lam : ∀ e, lc (.lam e) → value (.lam e)
+  | lam : ∀ e, value (.lam e)
   | unit : value .unit
 
 abbrev Ctx :=
@@ -23,7 +23,7 @@ inductive head : Expr → Expr → Prop where
   | app₁ : ∀ e v, value v → head (.app (.lam e) v) (opening 0 v e)
 
 inductive step : Expr → Expr → Prop where
-  | step𝕄 : ∀ M e₀ e₁, ctx𝕄 M → lc e₀ → head e₀ e₁ → step M⟦e₀⟧ M⟦e₁⟧
+  | step𝕄 : ∀ M e₀ e₁, ctx𝕄 M → head e₀ e₁ → step M⟦e₀⟧ M⟦e₁⟧
 
 inductive stepn : Expr → Expr → Prop
   | refl : ∀ e, stepn e e

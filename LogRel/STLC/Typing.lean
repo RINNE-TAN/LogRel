@@ -1,7 +1,7 @@
 
 
-import LogRel.Basic
-import LogRel.OpenClose
+import LogRel.STLC.Basic
+import LogRel.STLC.OpenClose
 @[simp]
 def getr {α : Type} (x : ℕ) (l : List α) : Option α :=
   match l with
