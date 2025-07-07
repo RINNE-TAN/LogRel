@@ -12,7 +12,7 @@ abbrev Ctx :=
 notation:max a "⟦" b "⟧" => a b
 
 inductive ctx𝔹 : Ctx → Prop where
-  | appl : ∀ arg, lc arg → ctx𝔹 (fun X => .app X arg)
+  | appl : ∀ arg, ctx𝔹 (fun X => .app X arg)
   | appr : ∀ v, value v → ctx𝔹 (fun X => .app v X)
 
 inductive ctx𝕄 : Ctx → Prop where
@@ -28,3 +28,5 @@ inductive step : Expr → Expr → Prop where
 inductive stepn : Expr → Expr → Prop
   | refl : ∀ e, stepn e e
   | trans : ∀ e₁ e₂ e₃, stepn e₁ e₂ → step e₂ e₃ → stepn e₁ e₃
+
+theorem step_appl : ∀ e₀ e₁ arg, step e₀ e₁ → step (.app e₀ arg) (.app e₁ arg) := by admit

@@ -3,31 +3,57 @@
 import LogRel.STLC.SmallStep
 import LogRel.STLC.Typing
 @[simp]
-def normalizable (e : Expr) :=
+def halts (e : Expr) :=
   ∃ v, value v ∧ stepn e v
 
 @[simp]
 def SN : Expr → Ty → Prop
-  | e, .unit => normalizable e
-  | f, .arrow τ𝕒 τ𝕓 => normalizable f ∧ ∀ arg, SN arg τ𝕒 → SN (.app f arg) τ𝕓
+  | e, .unit => halts e
+  | f, .arrow τ𝕒 τ𝕓 => halts f ∧ ∀ arg, SN arg τ𝕒 → SN (.app f arg) τ𝕓
 
-theorem SN_impl_normalizable : ∀ e τ, SN e τ → normalizable e :=
-  by
+theorem SN_impl_halts : ∀ e τ, SN e τ → halts e := by
   intros e τ HSN
   induction τ
   case unit => apply HSN
   case arrow => apply HSN.left
 
-theorem SN_reduction : ∀ e₀ e₁ τ, typing [] e₀ τ → step e₀ e₁ → (SN e₀ τ ↔ SN e₁ τ) := by
-  intros e₀ e₁ τ Hτ Hstep
-  cases Hstep
-  case step𝕄 HM Hhead =>
-    induction HM generalizing τ
-    case hole => admit
-    case cons𝔹 HB HM IH =>
-      cases HB
-      case appl => admit
-      case appr => admit
+theorem halts_reduction : ∀ e₀ e₁, step e₀ e₁ → (halts e₀ ↔ halts e₁) :=
+  by
+  intros e₀ e₁ Hstep
+  constructor
+  . admit
+  . admit
+
+theorem SN_reduction : ∀ e₀ e₁ τ, step e₀ e₁ → (SN e₀ τ ↔ SN e₁ τ) :=
+  by
+  intros e₀ e₁ τ Hstep
+  constructor
+  . intros HSN₀
+    induction τ generalizing e₀ e₁
+    case unit =>
+      apply (halts_reduction _ _ _).mp
+      apply HSN₀; apply Hstep
+    case arrow IHa IHb =>
+      constructor
+      . apply (halts_reduction _ _ _).mp
+        apply HSN₀.left; apply Hstep
+      . intro arg HSN₁
+        apply IHb
+        apply step_appl; apply Hstep
+        apply HSN₀.right; apply HSN₁
+  . intros HSN₀
+    induction τ generalizing e₀ e₁
+    case unit =>
+      apply (halts_reduction _ _ _).mpr
+      apply HSN₀; apply Hstep
+    case arrow IHa IHb =>
+      constructor
+      . apply (halts_reduction _ _ _).mpr
+        apply HSN₀.left; apply Hstep
+      . intro arg HSN₁
+        apply IHb
+        apply step_appl; apply Hstep
+        apply HSN₀.right; apply HSN₁
 
 example : ∀ e τ, typing [] e τ → SN e τ := by
   generalize HEqΓ : [] = Γ
@@ -52,4 +78,4 @@ example : ∀ e τ, typing [] e τ → SN e τ := by
     . apply value.unit
     . apply stepn.refl
 
-theorem strong_normalization : ∀ e τ, typing [] e τ → normalizable e := by admit
+theorem normalization : ∀ e τ, typing [] e τ → halts e := by admit
