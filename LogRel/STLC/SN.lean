@@ -55,27 +55,27 @@ theorem SN_reduction : ∀ e₀ e₁ τ, step e₀ e₁ → (SN e₀ τ ↔ SN e
         apply step_appl; apply Hstep
         apply HSN₀.right; apply HSN₁
 
-example : ∀ e τ, typing [] e τ → SN e τ := by
-  generalize HEqΓ : [] = Γ
-  intros e τ Hτ
-  induction Hτ
-  case fvar Hbinds =>
-    rw [← HEqΓ] at Hbinds
-    nomatch Hbinds
-  case lam e _ _ _ IH =>
-    constructor
-    . exists .lam e
-      constructor
-      . apply value.lam
-      . apply stepn.refl
-    . admit
-  case app IHf IHarg =>
-    apply (IHf HEqΓ).right
-    apply (IHarg HEqΓ)
-  case unit =>
-    exists .unit
-    constructor
-    . apply value.unit
-    . apply stepn.refl
+abbrev Subst :=
+  List Expr
+
+@[simp]
+def SN_Env : Subst → TEnv → Prop
+  | [], [] => true
+  | v :: vs, τ :: τs => SN v τ ∧ SN_Env vs τs
+  | _, _ => false
+
+@[simp]
+def substs : Subst → Expr → Expr
+  | [], e => e
+  | γ :: γs, e => substs γs (subst γs.length γ e)
+
+theorem typing_impl_SN : ∀ Γ e τ γs, typing Γ e τ → SN_Env γs Γ → SN (substs γs e) τ :=
+  by
+  intros Γ e τ γs Hτ HSNΓ
+  induction Hτ generalizing γs
+  case fvar => admit
+  case lam => admit
+  case app => admit
+  case unit => admit
 
 theorem normalization : ∀ e τ, typing [] e τ → halts e := by admit
