@@ -44,6 +44,11 @@ def substs (γs : Subst) : Expr -> Expr
   | .unit => .unit
 
 @[simp]
+def lc_subst : Subst → Prop
+  | [] => true
+  | γ :: γs => lc γ ∧ lc_subst γs
+
+@[simp]
 def fv : Expr → Set ℕ
   | .bvar _ => ∅
   | .fvar x => { x }
@@ -75,6 +80,88 @@ theorem substs_empty : ∀ e, substs [] e = e := by
   induction e
   case bvar => rfl
   case fvar => rfl
+  case lam IH => simp; apply IH
+  case app IH₀ IH₁ =>
+    simp; constructor
+    apply IH₀; apply IH₁
+  case unit => rfl
+
+theorem closedb_inc : ∀ t i j, closedb_at t i → i ≤ j → closedb_at t j :=
+  by
+  intros t i j Hclose HLe
+  induction t generalizing i j with
+  | bvar => simp at *; omega
+  | fvar => simp
+  | lam _ IH => apply IH; apply Hclose; omega
+  | app _ _ IH₀ IH₁ =>
+    apply And.intro
+    . apply IH₀; apply Hclose.left; omega
+    . apply IH₁; apply Hclose.right; omega
+  | unit => simp
+
+theorem closedb_opening_id : ∀ e v i, closedb_at e i → opening i v e = e :=
+  by
+  intros e v i Hclosedb
+  induction e generalizing i with
+  | fvar y => simp
+  | bvar j => simp at *; omega
+  | lam _ IH => simp; apply IH; apply Hclosedb
+  | app _ _ IH₀ IH₁ =>
+    simp; constructor
+    apply IH₀; apply Hclosedb.left
+    apply IH₁; apply Hclosedb.right
+  | unit => simp
+
+theorem substs_opening_comm :
+    ∀ x γs e i, x ≥ γs.length → lc_subst γs → substs γs (opening i (.fvar x) e) = opening i (.fvar x) (substs γs e) :=
+  by
+  intros x γs e i HGe Hlc
+  induction e generalizing i
+  case bvar j =>
+    simp
+    by_cases HEq : j = i
+    . simp [if_pos HEq]
+      rw [getr_none]; simp
+      apply HGe
+    . simp [if_neg HEq]
+  case fvar y =>
+    induction γs
+    case nil => rfl
+    case cons head tail IH =>
+      simp at HGe
+      by_cases HEq : tail.length = y
+      . simp [if_pos HEq]
+        rw [closedb_opening_id]
+        apply closedb_inc; apply Hlc.left; omega
+      . simp [if_neg HEq]
+        apply IH; omega; apply Hlc.right
+  case lam IH => simp; apply IH
+  case app IH₀ IH₁ =>
+    simp; constructor
+    apply IH₀; apply IH₁
+  case unit => rfl
+
+theorem substs_extend : ∀ γ γs e, substs (γ :: γs) e = subst γs.length γ (substs γs e) :=
+  by
+  intros γ γs e
+  induction e
+  case bvar => rfl
+  case fvar x =>
+    by_cases HEq : γs.length = x
+    . simp [if_pos HEq]
+      rw [getr_none]
+      simp; omega; omega
+    . simp [if_neg HEq]
+      induction γs with
+      | nil =>
+        simp at HEq
+        simp; omega
+      | cons _ tail IH =>
+        by_cases HEq : tail.length = x
+        . simp [if_pos HEq]
+          admit
+        . simp [if_neg HEq]
+          admit
   case lam IH => simp; apply IH
   case app IH₀ IH₁ =>
     simp; constructor

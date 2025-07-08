@@ -8,14 +8,21 @@ def halts (e : Expr) :=
 
 @[simp]
 def SN : Expr → Ty → Prop
-  | e, .unit => halts e
-  | f, .arrow τ𝕒 τ𝕓 => halts f ∧ ∀ arg, SN arg τ𝕒 → SN (.app f arg) τ𝕓
+  | e, .unit => lc e ∧ halts e
+  | f, .arrow τ𝕒 τ𝕓 => lc f ∧ halts f ∧ ∀ arg, SN arg τ𝕒 → SN (.app f arg) τ𝕓
 
 theorem SN_impl_halts : ∀ e τ, SN e τ → halts e := by
   intros e τ HSN
   induction τ
-  case unit => apply HSN
-  case arrow => apply HSN.left
+  case unit => apply HSN.right
+  case arrow => apply HSN.right.left
+
+theorem lc_step : ∀ e₀ e₁, step e₀ e₁ → (lc e₀ ↔ lc e₁) :=
+  by
+  intros e₀ e₁ Hstep
+  constructor
+  . admit
+  . admit
 
 theorem halts_step : ∀ e₀ e₁, step e₀ e₁ → (halts e₀ ↔ halts e₁) :=
   by
@@ -34,29 +41,41 @@ theorem SN_step : ∀ e₀ e₁ τ, step e₀ e₁ → (SN e₀ τ ↔ SN e₁ �
   . intros HSN₀
     induction τ generalizing e₀ e₁
     case unit =>
-      apply (halts_step _ _ _).mp
-      apply HSN₀; apply Hstep
+      constructor
+      . apply (lc_step _ _ _).mp
+        apply HSN₀.left; apply Hstep
+      . apply (halts_step _ _ _).mp
+        apply HSN₀.right; apply Hstep
     case arrow IHa IHb =>
       constructor
-      . apply (halts_step _ _ _).mp
+      . apply (lc_step _ _ _).mp
         apply HSN₀.left; apply Hstep
-      . intro arg HSN₁
-        apply IHb
-        apply step_appl; apply Hstep
-        apply HSN₀.right; apply HSN₁
+      . constructor
+        . apply (halts_step _ _ _).mp
+          apply HSN₀.right.left; apply Hstep
+        . intro arg HSN₁
+          apply IHb
+          apply step_appl; apply Hstep
+          apply HSN₀.right.right; apply HSN₁
   . intros HSN₀
     induction τ generalizing e₀ e₁
     case unit =>
-      apply (halts_step _ _ _).mpr
-      apply HSN₀; apply Hstep
+      constructor
+      . apply (lc_step _ _ _).mpr
+        apply HSN₀.left; apply Hstep
+      . apply (halts_step _ _ _).mpr
+        apply HSN₀.right; apply Hstep
     case arrow IHa IHb =>
       constructor
-      . apply (halts_step _ _ _).mpr
+      . apply (lc_step _ _ _).mpr
         apply HSN₀.left; apply Hstep
-      . intro arg HSN₁
-        apply IHb
-        apply step_appl; apply Hstep
-        apply HSN₀.right; apply HSN₁
+      . constructor
+        . apply (halts_step _ _ _).mpr
+          apply HSN₀.right.left; apply Hstep
+        . intro arg HSN₁
+          apply IHb
+          apply step_appl; apply Hstep
+          apply HSN₀.right.right; apply HSN₁
 
 theorem SN_stepn : ∀ e₀ e₁ τ, stepn e₀ e₁ → (SN e₀ τ ↔ SN e₁ τ) :=
   by
@@ -94,25 +113,29 @@ theorem fundamental : ∀ Γ e τ γs, typing Γ e τ → SN_Env γs Γ → SN (
         simp [if_neg HEq] at Hbinds
         apply IH; apply Hbinds
   case lam e _ _ _ HFv IH =>
-    constructor; exists substs γs (.lam e)
-    constructor; constructor
-    apply stepn.refl
-    intro arg HSN
-    have ⟨v, Hvalue, Hstepn⟩ := SN_impl_halts _ _ HSN
-    apply (SN_stepn _ _ _ _).mpr; apply IH (v :: γs); apply SN_Env.cons
-    apply (SN_stepn _ _ _ _).mp; apply HSN; apply Hstepn; apply HSNΓ
-    apply stepn_trans; apply stepn_appr; apply Hstepn; constructor
-    apply stepn.multi; apply step.step𝕄 id; apply ctx𝕄.hole; apply head.app; apply Hvalue
-    rw [← SN_Env_impl_length_eq _ _ HSNΓ, ← subst_intro γs.length]
-    all_goals admit
+    constructor
+    . admit
+    . constructor; exists substs γs (.lam e)
+      constructor; constructor
+      apply stepn.refl
+      intro arg HSN
+      have ⟨v, Hvalue, Hstepn⟩ := SN_impl_halts _ _ HSN
+      apply (SN_stepn _ _ _ _).mpr; apply IH (v :: γs); apply SN_Env.cons
+      apply (SN_stepn _ _ _ _).mp; apply HSN; apply Hstepn; apply HSNΓ
+      apply stepn_trans; apply stepn_appr; apply Hstepn; constructor
+      apply stepn.multi; apply step.step𝕄 id; apply ctx𝕄.hole; apply head.app; apply Hvalue
+      rw [← SN_Env_impl_length_eq _ _ HSNΓ, ← subst_intro γs.length, ← substs_opening_comm]
+      all_goals admit
   case app IH₀ IH₁ =>
-    apply (IH₀ _ HSNΓ).right
+    apply (IH₀ _ HSNΓ).right.right
     apply IH₁ _ HSNΓ
   case unit =>
-    exists .unit
     constructor
     . constructor
-    . apply stepn.refl
+    . exists .unit
+      constructor
+      . constructor
+      . apply stepn.refl
 
 theorem normalization : ∀ e τ, typing [] e τ → halts e :=
   by
