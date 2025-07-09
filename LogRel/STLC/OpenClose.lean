@@ -62,6 +62,11 @@ def lc_subst : Subst → Prop
   | γ :: γs => lc γ ∧ lc_subst γs
 
 @[simp]
+def closed_subst : Subst → Prop
+  | [] => true
+  | γ :: γs => closed γ ∧ closed_subst γs
+
+@[simp]
 def fv : Expr → Set ℕ
   | .bvar _ => ∅
   | .fvar x => { x }
@@ -112,6 +117,19 @@ theorem lc_inc : ∀ t i j, lc_at t i → i ≤ j → lc_at t j :=
     . apply IH₁; apply Hclose.right; omega
   | unit => simp
 
+theorem closed_inc : ∀ x y e, closed_at e x → x ≤ y → closed_at e y :=
+  by
+  intros x y e Hclose Hxy
+  induction e with
+  | bvar j => simp
+  | fvar z => simp at *; omega
+  | app _ _ IH₀ IH₁ =>
+    simp; constructor
+    apply IH₀; apply Hclose.left
+    apply IH₁; apply Hclose.right
+  | unit => simp
+  | lam _ IH => simp; apply IH; apply Hclose
+
 theorem lc_opening_id : ∀ e v i, lc_at e i → opening i v e = e :=
   by
   intros e v i Hlc
@@ -154,9 +172,44 @@ theorem substs_opening_comm :
     apply IH₀; apply IH₁
   case unit => rfl
 
-theorem substs_extend : ∀ γ γs e, substs (γ :: γs) e = subst γs.length γ (substs γs e) :=
+theorem subst_id : ∀ x e v, closed_at e x → subst x v e = e :=
   by
-  intros γ γs e
+  intros x e v He
+  induction e with
+  | bvar => simp
+  | fvar => simp at *; omega
+  | lam _ IH => simp; apply IH; apply He
+  | app _ _ IH₀ IH₁ =>
+    simp; constructor
+    apply IH₀; apply He.left
+    apply IH₁; apply He.right
+  | unit => simp
+
+theorem substs_closed : ∀ γs e x, closed_subst γs → closed_at e x → closed_at (substs γs e) x :=
+  by
+  intros γs e x HclosedSubst Hclosed
+  induction e
+  case fvar y =>
+    induction γs
+    case nil => apply Hclosed
+    case cons tail IH =>
+      by_cases HEq : tail.length = y
+      . simp [if_pos HEq]; apply closed_inc
+        apply HclosedSubst.left; omega
+      . simp [if_neg HEq]; apply IH
+        apply HclosedSubst.right
+  case bvar => simp
+  case lam IH => apply IH; apply Hclosed
+  case app IH₀ IH₁ =>
+    constructor
+    apply IH₀; apply Hclosed.left
+    apply IH₁; apply Hclosed.right
+  case unit => simp
+
+theorem substs_extend :
+    ∀ γ γs e, closed_subst γs → closed_at e γs.length → substs (γ :: γs) e = subst γs.length γ (substs γs e) :=
+  by
+  intros γ γs e HclosedSubst Hclosed
   induction e
   case bvar => rfl
   case fvar x =>
@@ -165,18 +218,13 @@ theorem substs_extend : ∀ γ γs e, substs (γ :: γs) e = subst γs.length γ
       rw [getr_none]
       simp; omega; omega
     . simp [if_neg HEq]
-      induction γs with
-      | nil =>
-        simp at HEq
-        simp; omega
-      | cons _ tail IH =>
-        by_cases HEq : tail.length = x
-        . simp [if_pos HEq]
-          admit
-        . simp [if_neg HEq]
-          admit
-  case lam IH => simp; apply IH
+      rw [subst_id]
+      apply substs_closed γs (.fvar x)
+      apply HclosedSubst
+      apply Hclosed
+  case lam IH => simp; apply IH; apply Hclosed
   case app IH₀ IH₁ =>
     simp; constructor
-    apply IH₀; apply IH₁
+    apply IH₀; apply Hclosed.left
+    apply IH₁; apply Hclosed.right
   case unit => rfl

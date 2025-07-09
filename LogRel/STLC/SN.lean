@@ -151,7 +151,8 @@ theorem fundamental : ∀ Γ e τ γs, typing Γ e τ → SN_Env γs Γ → SN (
       apply (SN_stepn _ _ _ _).mp; apply HSN; apply Hstepn; apply HSNΓ
       apply stepn_trans; apply stepn_appr; apply Hstepn; constructor
       apply stepn.multi; apply step.step𝕄 id; apply ctx𝕄.hole; apply head.app; apply Hvalue
-      rw [← SN_Env_impl_length_eq _ _ HSNΓ, ← subst_intro γs.length, ← substs_opening_comm]
+      rw [← SN_Env_impl_length_eq, ← subst_intro, ← substs_opening_comm, ← substs_extend]
+      apply stepn.refl
       all_goals admit
   case app IH₀ IH₁ =>
     apply (IH₀ _ HSNΓ).right.right.right
