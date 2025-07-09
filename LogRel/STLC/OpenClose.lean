@@ -4,17 +4,30 @@ import Mathlib.Data.Set.Insert
 import LogRel.STLC.Basic
 import LogRel.STLC.Env
 @[simp]
-def closedb_at (e : Expr) (i : ℕ) : Prop :=
+def lc_at (e : Expr) (i : ℕ) : Prop :=
   match e with
   | .bvar x => x < i
   | .fvar _ => true
-  | .lam e => closedb_at e (i + 1)
-  | .app f arg => closedb_at f i ∧ closedb_at arg i
+  | .lam e => lc_at e (i + 1)
+  | .app f arg => lc_at f i ∧ lc_at arg i
   | .unit => true
 
 @[simp]
 def lc e :=
-  closedb_at e 0
+  lc_at e 0
+
+@[simp]
+def closed_at (e : Expr) (x : ℕ) : Prop :=
+  match e with
+  | .bvar _ => true
+  | .fvar y => y < x
+  | .lam e => closed_at e x
+  | .app f arg => closed_at f x ∧ closed_at arg x
+  | .unit => true
+
+@[simp]
+def closed e :=
+  closed_at e 0
 
 @[simp]
 def opening (i : ℕ) (v : Expr) : Expr → Expr
@@ -25,7 +38,7 @@ def opening (i : ℕ) (v : Expr) : Expr → Expr
   | .unit => .unit
 
 @[simp]
-def subst (x : ℕ) (v : Expr) : Expr -> Expr
+def subst (x : ℕ) (v : Expr) : Expr → Expr
   | .bvar i => .bvar i
   | .fvar y => if x = y then v else .fvar y
   | .lam e => .lam (subst x v e)
@@ -36,7 +49,7 @@ abbrev Subst :=
   List Expr
 
 @[simp]
-def substs (γs : Subst) : Expr -> Expr
+def substs (γs : Subst) : Expr → Expr
   | .bvar i => .bvar i
   | .fvar y => (getr y γs).elim (.fvar y) id
   | .lam e => .lam (substs γs e)
@@ -86,7 +99,7 @@ theorem substs_empty : ∀ e, substs [] e = e := by
     apply IH₀; apply IH₁
   case unit => rfl
 
-theorem closedb_inc : ∀ t i j, closedb_at t i → i ≤ j → closedb_at t j :=
+theorem lc_inc : ∀ t i j, lc_at t i → i ≤ j → lc_at t j :=
   by
   intros t i j Hclose HLe
   induction t generalizing i j with
@@ -99,17 +112,17 @@ theorem closedb_inc : ∀ t i j, closedb_at t i → i ≤ j → closedb_at t j :
     . apply IH₁; apply Hclose.right; omega
   | unit => simp
 
-theorem closedb_opening_id : ∀ e v i, closedb_at e i → opening i v e = e :=
+theorem lc_opening_id : ∀ e v i, lc_at e i → opening i v e = e :=
   by
-  intros e v i Hclosedb
+  intros e v i Hlc
   induction e generalizing i with
   | fvar y => simp
   | bvar j => simp at *; omega
-  | lam _ IH => simp; apply IH; apply Hclosedb
+  | lam _ IH => simp; apply IH; apply Hlc
   | app _ _ IH₀ IH₁ =>
     simp; constructor
-    apply IH₀; apply Hclosedb.left
-    apply IH₁; apply Hclosedb.right
+    apply IH₀; apply Hlc.left
+    apply IH₁; apply Hlc.right
   | unit => simp
 
 theorem substs_opening_comm :
@@ -131,8 +144,8 @@ theorem substs_opening_comm :
       simp at HGe
       by_cases HEq : tail.length = y
       . simp [if_pos HEq]
-        rw [closedb_opening_id]
-        apply closedb_inc; apply Hlc.left; omega
+        rw [lc_opening_id]
+        apply lc_inc; apply Hlc.left; omega
       . simp [if_neg HEq]
         apply IH; omega; apply Hlc.right
   case lam IH => simp; apply IH
